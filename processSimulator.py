@@ -2,71 +2,23 @@ from tkinter import *
 import tkinter.ttk as tkrttk
 import platform
 import copy
+import math
 
 processArray = []
 
-
 class Process:
-    __numberOfProcess = 0
-    __quantumTime = 3
 
-    def __init__(self, arrival, burst, priority, quantum=3):
+    def __init__(self, processNumber, arrivalTime, burstTime, priority):
 
-        Process.__numberOfProcess += 1
-        Process.__quantumTime = quantum
-        self.__processName = "P" + str(Process.__numberOfProcess)
-        self.__arrivalTime = arrival
-        self.__burstTime = burst
-        self.__priority = priority
-        self.__startTime = []
-        self.__endTime = []
-        self.__turnAroundTime = 0
-        self.__waitingTime = 0
-
-    def getStartTime(self):
-        return self.__startTime
-
-    def getEndTime(self):
-        return self.__endTime
-
-    def getTurnAroundTime(self):
-        return int(self.__turnAroundTime)
-
-    def setTurnAroundTime(self, turnAroundTime):
-        self.__turnAroundTime = int(turnAroundTime)
-
-    def getWaitingTime(self):
-        return int(self.__waitingTime)
-
-    def setWaitingTime(self, waitingTime):
-        self.__waitingTime = int(waitingTime)
-
-    def getProcessName(self):
-        return self.__processName
-
-    def getArrivalTime(self):
-        return int(self.__arrivalTime)
-
-    def getBurstTime(self):
-        return int(self.__burstTime)
-
-    def setBurstTime(self, burstTime):
-        self.__burstTime = int(burstTime)
-
-    @staticmethod
-    def getQuantumTime():
-        return int(Process.__quantumTime)
-
-    def getPriority(self):
-        return int(self.__priority)
-
-    @staticmethod
-    def deleteProcess():
-        Process.__numberOfProcess = 0
-
-    @staticmethod
-    def setQuantumTime(quantum):
-        Process.__quantumTime = int(quantum)
+        self.name = "P" + str(processNumber)
+        self.burstTime = burstTime
+        self.decBurstTime = burstTime
+        self.arrivalTime = arrivalTime
+        self.startTime = []
+        self.endTime = []
+        self.turnAroundTime = 0
+        self.waitingTime = 0
+        self.priority = priority
 
 
 class MainWindow(Tk):
@@ -76,6 +28,7 @@ class MainWindow(Tk):
             self.geometry("1270x620")  # TODO: Platform support
         else:
             self.geometry("1300x710")
+        self.numberOfProcess = 0
         self.resizable(False, False)
         self.var = StringVar()
         self.var2 = StringVar()
@@ -198,13 +151,14 @@ class MainWindow(Tk):
         self.calctreeview.insert("", 'end', text="-", values=(process, avgWaiting, avgTurnaround))
 
     def add(self):
+        self.numberOfProcess = self.numberOfProcess + 1
         processArray.append(
-            Process(int(self.arrivalEntry.get()), int(self.burstEntry.get()), int(self.priorityEntry.get())))
+            Process(self.numberOfProcess, int(self.arrivalEntry.get()), int(self.burstEntry.get()), int(self.priorityEntry.get())))
 
         if len(processArray) != 0:
             process = processArray[len(processArray) - 1]
-            self.insertTreeview(process.getProcessName(), process.getBurstTime(), process.getArrivalTime()
-                                , process.getPriority())
+            self.insertTreeview(process.name, process.burstTime, process.arrivalTime
+                                , process.priority)
 
     def remove(self):
         curItem = self.treeview.focus()
@@ -213,16 +167,14 @@ class MainWindow(Tk):
             datas = values['values']
 
             for process in processArray:
-                if datas[0] == process.getProcessName():
+                if datas[0] == process.name:
                     processArray.remove(process)
                     self.treeview.delete(curItem)
 
     def clear(self):
         for i in self.treeview.get_children():
             self.treeview.delete(i)
-
-        for process in processArray:
-            process.deleteProcess()
+        self.numberOfProcess = 0
         processArray.clear()
 
     def resetOutput(self):
@@ -232,8 +184,8 @@ class MainWindow(Tk):
             self.calctreeview.delete(i)
 
     def calcEndResult(self, avgturnaround, avgwaiting):  # Show total avg turnAround and waiting time
-        self.display2.insert(INSERT, "Total and Average Turnaround time : " + avgturnaround)
-        self.display2.insert(INSERT, "\nTotal and Average Waiting time : " + avgwaiting)
+        self.display2.insert(INSERT, "Average Turnaround time : " + avgturnaround)
+        self.display2.insert(INSERT, "\nAverage Waiting Time : " + avgwaiting)
 
     def gantChartOut(self, processName, processTime, end=False):
 
@@ -251,24 +203,19 @@ class MainWindow(Tk):
             self.display.insert("1.end", border)
             self.display.insert("2.end", tempstring)
             self.display.insert("3.end", border)
-            self.display.insert("4.end", processTime)
-            for x in range(len(border) - len(str(processTime))):
+            self.display.insert("4.end", "0")
+            for x in range(len(border) - len(str(processTime)) - 1):
                 self.display.insert("4.end", " ")
+            self.display.insert("4.end", processTime)
 
         else:
             for lineNumber in range(totalLine):
-                if end is not True:
-                    if (len(self.display.get(str(lineNumber + 1) + ".0", str(lineNumber + 1) + ".end")) + 12) < charLength:
-                        self.display.insert(str(lineNumber + 1) + ".end", border)
-                        self.display.insert(str(lineNumber + 2) + ".end", tempstring)
-                        self.display.insert(str(lineNumber + 3) + ".end", border)
-                        self.display.insert(str(lineNumber + 4) + ".end", processTime)
-                        for x in range(len(border) - len(str(processTime))):
-                            self.display.insert(str(lineNumber + 4) + ".end", " ")
-                        break
-                else:
-                    deleteline = str(lineNumber + 4) + "." + str(len(self.display.get(4.0, "4.end"))-1)
-                    self.display.delete(deleteline)
+                if (len(self.display.get(str(lineNumber + 1) + ".0", str(lineNumber + 1) + ".end")) + 12) < charLength:
+                    self.display.insert(str(lineNumber + 1) + ".end", border)
+                    self.display.insert(str(lineNumber + 2) + ".end", tempstring)
+                    self.display.insert(str(lineNumber + 3) + ".end", border)
+                    for x in range(len(border) - len(str(processTime))):
+                        self.display.insert(str(lineNumber + 4) + ".end", " ")
                     self.display.insert(str(lineNumber + 4) + ".end", processTime)
                     break
 
@@ -289,70 +236,82 @@ class MainWindow(Tk):
 
     def preSJF(self):
 
-        processArray.sort(key=lambda x: (x.getArrivalTime(), x.getBurstTime()))
+        processArray.sort(key=lambda x: (x.arrivalTime, x.burstTime))
 
         time = 0
-        copyprocessArray = copy.deepcopy(processArray)
+        copyProcessList = copy.deepcopy(processArray) #change to deep copy
         processQueue = []
-        process = Process(0, 0, 0)
-        while True:  # this loop keep running if there are process's arrival time reached the current time, stop if there's no more
+        process = Process(0, 0, 0, math.inf)
+        while True:
             restart = True
             while restart:
-                if len(copyprocessArray) == 0:
+                if len(copyProcessList) == 0:
                     restart = False
                 else:
                     restart = True
 
-                for i in range(len(copyprocessArray)):
-                    if copyprocessArray[i].getArrivalTime() == time:
-                        processQueue.append(copyprocessArray.pop(i))
+                for i in range(len(copyProcessList)):
+                    if copyProcessList[i].arrivalTime == time:
+                        processQueue.append(copyProcessList.pop(i))
                         break
                     else:
                         restart = False
-
-            processQueue.sort(key=lambda x: x.getBurstTime())
-            if len(processQueue) > 0 and process.getProcessName() != processQueue[0].getProcessName():
-                process.getEndTime().append(time)
+            processQueue.sort(key=lambda x: (x.decBurstTime, x.arrivalTime))
+            if len(processQueue) > 0 and process.name != processQueue[0].name:
+                process.endTime.append(time)
+                if process.name != "P0" and process.decBurstTime > 1:
+                    self.gantChartOut(process.name, time)
+                for e in processQueue:  #
+                    if "P100" in e.name:  #
+                        # put gant chart ("IDLE", time)
+                        self.gantChartOut("IDLE", time)
+                        processQueue.pop(processQueue.index(e))  #
                 process = processQueue[0]
-                process.getStartTime().append(time)
-                self.gantChartOut(process.getProcessName(), time)
-                print("GOUT2")
+                process.startTime.append(time)
             time = time + 1
-            process.setBurstTime(process.getBurstTime() - 1)
-            print("Burst", process.getBurstTime())
-            if process.getBurstTime() == 0:
-                process.getEndTime().append(time)
-                processQueue.pop(0)
+            process.decBurstTime = process.decBurstTime - 1
+            if process.decBurstTime <= 0:
+                process.endTime.append(time)
+                # put gant chart (process.name, time)
+                self.gantChartOut(process.name, time)
+                if len(processQueue) != 0:
+                    processQueue.pop(0)
             if len(processQueue) == 0:
-                self.gantChartOut(process.getProcessName(), time, True)
-                print("GOUT")
-                break
-
-        for i in range(len(processArray)):
-            for st in range(len(processArray[i].getStartTime())):
-                if st == 0:
-                    processArray[i].setWaitingTime(
-                        processArray[i].getStartTime()[st] - processArray[i].getArrivalTime())
+                if len(copyProcessList) == 0:
+                    break
                 else:
-                    processArray[i].setWaitingTime(processArray[i].getWaitingTime() + (
-                            processArray[i].getStartTime()[st] - processArray[i].getEndTime()[st - 1]))
-            processArray[i].setTurnAroundTime(processArray[i].getWaitingTime() + processArray[i].getBurstTime())
+                    processQueue.append(Process(100, time, math.inf, math.inf))  #
+                    process = processQueue[0]  #
 
-        print("\n    BT    AT    WT    TT")
         for i in range(len(processArray)):
-            print(processArray[i].getProcessName() + ": %2d    %2d    %2d    %2d"
-                  % (processArray[i].getBurstTime(), processArray[i].getArrivalTime(), processArray[i].getWaitingTime(),
-                     processArray[i].getTurnAroundTime()))
+            for st in range(len(processArray[i].startTime)):
+                if st == 0:
+                    processArray[i].waitingTime = processArray[i].startTime[st] - processArray[i].arrivalTime
+                else:
+                    processArray[i].waitingTime = processArray[i].waitingTime + (
+                                processArray[i].startTime[st] - processArray[i].endTime[st - 1])
+            processArray[i].turnAroundTime = processArray[i].waitingTime + processArray[i].burstTime
+
+        for i in range(len(processArray)):
+            self.insertCalcTreeView(processArray[i].name, processArray[i].waitingTime,
+                                    processArray[i].turnAroundTime)
 
         sumWT = 0
         sumTT = 0
         for i in range(len(processArray)):
-            sumWT = sumWT + processArray[i].getWaitingTime()
-            sumTT = sumTT + processArray[i].getTurnAroundTime()
+            sumWT = sumWT + processArray[i].waitingTime
+            sumTT = sumTT + processArray[i].turnAroundTime
         averageWT = sumWT / len(processArray)
         averageTT = sumTT / len(processArray)
         print("Average WT:  %.2f" % averageWT)
         print("Average TT:  %.2f" % averageTT)
+        self.calcEndResult(str(averageTT), str(averageWT))
+
+        #debug
+        for i in range(len(processArray)):
+            print("\n" + processArray[i].name)
+            print(processArray[i].startTime)
+            print(processArray[i].endTime)
 
     def nonPreSJF(self):
         print("Non Premptive SJF")
