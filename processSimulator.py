@@ -1,19 +1,20 @@
 from tkinter import *
 import tkinter.ttk as tkrttk
 import platform
+import copy
 
 processArray = []
 
 
 class Process:
-
     __numberOfProcess = 0
     __quantumTime = 3
 
     def __init__(self, arrival, burst, priority, quantum=3):
+
         Process.__numberOfProcess += 1
         Process.__quantumTime = quantum
-        self.__processName = "P"+str(Process.__numberOfProcess)
+        self.__processName = "P" + str(Process.__numberOfProcess)
         self.__arrivalTime = arrival
         self.__burstTime = burst
         self.__priority = priority
@@ -29,46 +30,50 @@ class Process:
         return self.__endTime
 
     def getTurnAroundTime(self):
-        return self.__turnAroundTime
+        return int(self.__turnAroundTime)
 
     def setTurnAroundTime(self, turnAroundTime):
-        self.__turnAroundTime = turnAroundTime
+        self.__turnAroundTime = int(turnAroundTime)
 
     def getWaitingTime(self):
-        return self.__waitingTime
+        return int(self.__waitingTime)
 
     def setWaitingTime(self, waitingTime):
-        self.__waitingTime = waitingTime
+        self.__waitingTime = int(waitingTime)
 
     def getProcessName(self):
         return self.__processName
 
     def getArrivalTime(self):
-        return self.__arrivalTime
+        return int(self.__arrivalTime)
 
     def getBurstTime(self):
-        return self.__burstTime
+        return int(self.__burstTime)
+
+    def setBurstTime(self, burstTime):
+        self.__burstTime = int(burstTime)
 
     @staticmethod
     def getQuantumTime():
-        return Process.__quantumTime
+        return int(Process.__quantumTime)
 
     def getPriority(self):
-        return self.__priority
+        return int(self.__priority)
 
-    def deleteProcess(self):
+    @staticmethod
+    def deleteProcess():
         Process.__numberOfProcess = 0
 
     @staticmethod
     def setQuantumTime(quantum):
-        Process.__quantumTime = quantum
+        Process.__quantumTime = int(quantum)
 
 
 class MainWindow(Tk):
     def __init__(self):
         super(MainWindow, self).__init__()
         if platform.system() == "Windows":
-            self.geometry("1270x620") #TODO: Platform support
+            self.geometry("1270x620")  # TODO: Platform support
         else:
             self.geometry("1300x710")
         self.resizable(False, False)
@@ -85,9 +90,9 @@ class MainWindow(Tk):
         self.lvl3 = Frame(self)
 
         self.label = Label(self.lvl2, textvariable=self.var, relief=SOLID)
-        self.label2 = Label(self.lvl2, textvariable=self.var2, relief=SOLID, width=33) #TODO: Platform support
+        self.label2 = Label(self.lvl2, textvariable=self.var2, relief=SOLID, width=33)  # TODO: Platform support
         if platform.system() == "Windows":
-            self.label3 = Label(self.lvl2, textvariable=self.var3, relief=SOLID, width=115) #TODO: Platform support
+            self.label3 = Label(self.lvl2, textvariable=self.var3, relief=SOLID, width=115)  # TODO: Platform support
         else:
             self.label3 = Label(self.lvl2, textvariable=self.var3, relief=SOLID, width=86)
         self.label4 = Label(self.lvl3, textvariable=self.var4, relief=SOLID)
@@ -95,8 +100,8 @@ class MainWindow(Tk):
         self.burstLabel = Label(self.lvl2, textvariable=self.varBurst)
         self.priorityLabel = Label(self.lvl2, textvariable=self.varPriority)
 
-        self.treeview = tkrttk.Treeview(self.lvl1, height=5) #TODO: Platform support
-        self.calctreeview = tkrttk.Treeview(self.lvl2, height=9) #TODO: Platform support
+        self.treeview = tkrttk.Treeview(self.lvl1, height=5)  # TODO: Platform support
+        self.calctreeview = tkrttk.Treeview(self.lvl2, height=9)  # TODO: Platform support
 
         self.listBox = Listbox(self.lvl2)
 
@@ -109,10 +114,10 @@ class MainWindow(Tk):
         self.clearAllBtn = Button(self.lvl2, text="Clear all process", command=self.clear)
         self.startBtn = Button(self.lvl3, text="Start Simulation", command=self.start)
         if platform.system() == "Windows":
-            self.display = Text(self.lvl3, height=10, bd=2, relief=SOLID) #TODO: Platform support
+            self.display = Text(self.lvl3, height=10, bd=2, relief=SOLID)  # TODO: Platform support
         else:
-            self.display = Text(self.lvl3, height=15, bd=2, relief=SOLID) #TODO: Platform support
-        self.display2 = Text(self.lvl2, height=13, width=55, bd=2, relief=SOLID) #TODO: Platform support
+            self.display = Text(self.lvl3, height=15, bd=2, relief=SOLID)  # TODO: Platform support
+        self.display2 = Text(self.lvl2, height=13, width=55, bd=2, relief=SOLID)  # TODO: Platform support
 
         self.initUI()
 
@@ -193,7 +198,8 @@ class MainWindow(Tk):
         self.calctreeview.insert("", 'end', text="-", values=(process, avgWaiting, avgTurnaround))
 
     def add(self):
-        processArray.append(Process(self.arrivalEntry.get(), self.burstEntry.get(), self.priorityEntry.get()))
+        processArray.append(
+            Process(int(self.arrivalEntry.get()), int(self.burstEntry.get()), int(self.priorityEntry.get())))
 
         if len(processArray) != 0:
             process = processArray[len(processArray) - 1]
@@ -225,40 +231,45 @@ class MainWindow(Tk):
         for i in self.calctreeview.get_children():
             self.calctreeview.delete(i)
 
-    def calcEndResult(self, avgturnaround, avgwaiting): #Show total avg turnAround and waiting time
+    def calcEndResult(self, avgturnaround, avgwaiting):  # Show total avg turnAround and waiting time
         self.display2.insert(INSERT, "Total and Average Turnaround time : " + avgturnaround)
         self.display2.insert(INSERT, "\nTotal and Average Waiting time : " + avgwaiting)
 
-    def gantChartOut(self, processName, processTime):
+    def gantChartOut(self, processName, processTime, end=False):
 
         charLength = 0
         if platform.system() == "Windows":
-            charLength += 168 #TODO: platform check
+            charLength += 168  # TODO: platform check
         else:
-            charLength += 192 #TODO: platform check
+            charLength += 192  # TODO: platform check
         totalLine = 1000
         border = "------------"
         tempstring = "|" + '{:^10}'.format(processName) + "|"
-
         if len(self.display.get(1.0, "1.end")) == 0:
             for x in range(totalLine):
                 self.display.insert(INSERT, "\n")
             self.display.insert("1.end", border)
             self.display.insert("2.end", tempstring)
             self.display.insert("3.end", border)
-            self.display.insert("4.end", "0")
-            for x in range(len(border)-len(str(processTime))-1):
-                self.display.insert("4.end", " ")
             self.display.insert("4.end", processTime)
+            for x in range(len(border) - len(str(processTime))):
+                self.display.insert("4.end", " ")
+
         else:
             for lineNumber in range(totalLine):
-                if (len(self.display.get(str(lineNumber+1) + ".0", str(lineNumber+1) + ".end")) + 12) < charLength:
-                    self.display.insert(str(lineNumber+1) + ".end", border)
-                    self.display.insert(str(lineNumber+2) + ".end", tempstring)
-                    self.display.insert(str(lineNumber+3) + ".end", border)
-                    for x in range(len(border) - len(str(processTime))):
-                        self.display.insert(str(lineNumber+4) + ".end", " ")
-                    self.display.insert(str(lineNumber+4) + ".end", processTime)
+                if end is not True:
+                    if (len(self.display.get(str(lineNumber + 1) + ".0", str(lineNumber + 1) + ".end")) + 12) < charLength:
+                        self.display.insert(str(lineNumber + 1) + ".end", border)
+                        self.display.insert(str(lineNumber + 2) + ".end", tempstring)
+                        self.display.insert(str(lineNumber + 3) + ".end", border)
+                        self.display.insert(str(lineNumber + 4) + ".end", processTime)
+                        for x in range(len(border) - len(str(processTime))):
+                            self.display.insert(str(lineNumber + 4) + ".end", " ")
+                        break
+                else:
+                    deleteline = str(lineNumber + 4) + "." + str(len(self.display.get(4.0, "4.end"))-1)
+                    self.display.delete(deleteline)
+                    self.display.insert(str(lineNumber + 4) + ".end", processTime)
                     break
 
     def start(self):
@@ -276,13 +287,77 @@ class MainWindow(Tk):
         else:
             self.display.insert(INSERT, "PLEASE SELECT A SCHEDULING ALGORITHM...")
 
-    def preSJF(self): #place ur algorithm here
-        print("pre sjf")
+    def preSJF(self):
 
-    def nonPreSJF(self): #place here
+        processArray.sort(key=lambda x: (x.getArrivalTime(), x.getBurstTime()))
+
+        time = 0
+        copyprocessArray = copy.deepcopy(processArray)
+        processQueue = []
+        process = Process(0, 0, 0)
+        while True:  # this loop keep running if there are process's arrival time reached the current time, stop if there's no more
+            restart = True
+            while restart:
+                if len(copyprocessArray) == 0:
+                    restart = False
+                else:
+                    restart = True
+
+                for i in range(len(copyprocessArray)):
+                    if copyprocessArray[i].getArrivalTime() == time:
+                        processQueue.append(copyprocessArray.pop(i))
+                        break
+                    else:
+                        restart = False
+
+            processQueue.sort(key=lambda x: x.getBurstTime())
+            if len(processQueue) > 0 and process.getProcessName() != processQueue[0].getProcessName():
+                process.getEndTime().append(time)
+                process = processQueue[0]
+                process.getStartTime().append(time)
+                self.gantChartOut(process.getProcessName(), time)
+                print("GOUT2")
+            time = time + 1
+            process.setBurstTime(process.getBurstTime() - 1)
+            print("Burst", process.getBurstTime())
+            if process.getBurstTime() == 0:
+                process.getEndTime().append(time)
+                processQueue.pop(0)
+            if len(processQueue) == 0:
+                self.gantChartOut(process.getProcessName(), time, True)
+                print("GOUT")
+                break
+
+        for i in range(len(processArray)):
+            for st in range(len(processArray[i].getStartTime())):
+                if st == 0:
+                    processArray[i].setWaitingTime(
+                        processArray[i].getStartTime()[st] - processArray[i].getArrivalTime())
+                else:
+                    processArray[i].setWaitingTime(processArray[i].getWaitingTime() + (
+                            processArray[i].getStartTime()[st] - processArray[i].getEndTime()[st - 1]))
+            processArray[i].setTurnAroundTime(processArray[i].getWaitingTime() + processArray[i].getBurstTime())
+
+        print("\n    BT    AT    WT    TT")
+        for i in range(len(processArray)):
+            print(processArray[i].getProcessName() + ": %2d    %2d    %2d    %2d"
+                  % (processArray[i].getBurstTime(), processArray[i].getArrivalTime(), processArray[i].getWaitingTime(),
+                     processArray[i].getTurnAroundTime()))
+
+        sumWT = 0
+        sumTT = 0
+        for i in range(len(processArray)):
+            sumWT = sumWT + processArray[i].getWaitingTime()
+            sumTT = sumTT + processArray[i].getTurnAroundTime()
+        averageWT = sumWT / len(processArray)
+        averageTT = sumTT / len(processArray)
+        print("Average WT:  %.2f" % averageWT)
+        print("Average TT:  %.2f" % averageTT)
+
+    def nonPreSJF(self):
         print("Non Premptive SJF")
 
-    def prePrio(self): #place here
+    def prePrio(self):
         print("Premptive Priority")
 
     def RR(self):
@@ -308,4 +383,5 @@ class DialogPrompt(Tk):
         self.destroy()
 
 
-mainController = MainWindow()
+if __name__ == "__main__":
+    mainController = MainWindow()
