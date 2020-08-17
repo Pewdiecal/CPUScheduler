@@ -6,10 +6,10 @@ import math
 
 processArray = []
 
+
 class Process:
 
     def __init__(self, processNumber, arrivalTime, burstTime, priority):
-
         self.name = "P" + str(processNumber)
         self.burstTime = burstTime
         self.decBurstTime = burstTime
@@ -86,7 +86,8 @@ class MainWindow(Tk):
         self.listBox.insert(1, "Preemptive SJF")
         self.listBox.insert(2, "Non Preemptive SJF")
         self.listBox.insert(3, "Preemptive Priority")
-        self.listBox.insert(4, "Round Robin")
+        self.listBox.insert(4, "Non Preemptive Priority")
+        self.listBox.insert(5, "Round Robin")
         self.treeview["column"] = ("Process", "Burst Time", "Arrival Time", "Priority")
         self.calctreeview["column"] = ("Process", "Waiting Time", "Turnaround Time")
 
@@ -121,12 +122,12 @@ class MainWindow(Tk):
         self.label.grid(row=0, column=0, padx=6, pady=5)
         self.label2.grid(row=0, column=1, padx=8, pady=5, columnspan=3)
         self.label3.grid(row=0, column=6, padx=5, pady=5, columnspan=2)
-        self.arrivalLabel.grid(row=1, column=1)
-        self.burstLabel.grid(row=2, column=1)
+        self.burstLabel.grid(row=1, column=1)
+        self.arrivalLabel.grid(row=2, column=1)
         self.priorityLabel.grid(row=3, column=1)
 
-        self.arrivalEntry.grid(row=1, column=2, columnspan=2)
-        self.burstEntry.grid(row=2, column=2, columnspan=2)
+        self.burstEntry.grid(row=1, column=2, columnspan=2)
+        self.arrivalEntry.grid(row=2, column=2, columnspan=2)
         self.priorityEntry.grid(row=3, column=2, columnspan=2)
 
         self.listBox.grid(row=1, column=0, padx=5, pady=5, rowspan=10)
@@ -153,7 +154,8 @@ class MainWindow(Tk):
     def add(self):
         self.numberOfProcess = self.numberOfProcess + 1
         processArray.append(
-            Process(self.numberOfProcess, int(self.arrivalEntry.get()), int(self.burstEntry.get()), int(self.priorityEntry.get())))
+            Process(self.numberOfProcess, int(self.arrivalEntry.get()), int(self.burstEntry.get()),
+                    int(self.priorityEntry.get())))
 
         if len(processArray) != 0:
             process = processArray[len(processArray) - 1]
@@ -228,9 +230,10 @@ class MainWindow(Tk):
             self.nonPreSJF()
         elif str(self.listBox.curselection()) == "(2,)":
             self.prePrio()
-        elif str(self.listBox.curselection()) == "(3,)":
-            DialogPrompt()
+        elif str(self.listBox.curselection()) == "(4,)":
             self.RR()
+        elif str(self.listBox.curselection()) == "(3,)":
+            self.nonPrePrio()
         else:
             self.display.insert(INSERT, "PLEASE SELECT A SCHEDULING ALGORITHM...")
 
@@ -239,9 +242,9 @@ class MainWindow(Tk):
         processArray.sort(key=lambda x: (x.arrivalTime, x.burstTime))
 
         time = 0
-        copyProcessList = copy.deepcopy(processArray) #change to deep copy
+        copyProcessList = processArray.copy()  # change to deep copy
         processQueue = []
-        process = Process(0, 0, 0, math.inf)
+        process = Process(0, 0, copyProcessList[0].arrivalTime, math.inf)
         while True:
             restart = True
             while restart:
@@ -259,7 +262,7 @@ class MainWindow(Tk):
             processQueue.sort(key=lambda x: (x.decBurstTime, x.arrivalTime))
             if len(processQueue) > 0 and process.name != processQueue[0].name:
                 process.endTime.append(time)
-                if process.name != "P0" and process.decBurstTime > 1:
+                if (process.name != "P0" and process.name != "P100") and process.decBurstTime > 1:
                     self.gantChartOut(process.name, time)
                 for e in processQueue:  #
                     if "P100" in e.name:  #
@@ -268,17 +271,24 @@ class MainWindow(Tk):
                         processQueue.pop(processQueue.index(e))  #
                 process = processQueue[0]
                 process.startTime.append(time)
+            elif len(processQueue) == 0 and process.name == "P0":
+                processQueue.append(process)
             time = time + 1
             process.decBurstTime = process.decBurstTime - 1
             if process.decBurstTime <= 0:
                 process.endTime.append(time)
-                # put gant chart (process.name, time)
-                self.gantChartOut(process.name, time)
+                if process.name == "P0":
+                    self.gantChartOut("IDLE", time)
+                else:
+                    # put gant chart (process.name, time)
+                    self.gantChartOut(process.name, time)
                 if len(processQueue) != 0:
                     processQueue.pop(0)
             if len(processQueue) == 0:
                 if len(copyProcessList) == 0:
                     break
+                elif copyProcessList[0].arrivalTime == time:
+                    continue
                 else:
                     processQueue.append(Process(100, time, math.inf, math.inf))  #
                     process = processQueue[0]  #
@@ -289,7 +299,7 @@ class MainWindow(Tk):
                     processArray[i].waitingTime = processArray[i].startTime[st] - processArray[i].arrivalTime
                 else:
                     processArray[i].waitingTime = processArray[i].waitingTime + (
-                                processArray[i].startTime[st] - processArray[i].endTime[st - 1])
+                            processArray[i].startTime[st] - processArray[i].endTime[st - 1])
             processArray[i].turnAroundTime = processArray[i].waitingTime + processArray[i].burstTime
 
         for i in range(len(processArray)):
@@ -307,26 +317,437 @@ class MainWindow(Tk):
         print("Average TT:  %.2f" % averageTT)
         self.calcEndResult(str(averageTT), str(averageWT))
 
-        #debug
+        # debug
         for i in range(len(processArray)):
             print("\n" + processArray[i].name)
             print(processArray[i].startTime)
             print(processArray[i].endTime)
 
+        # reset all the values
+        for i in range(len(processArray)):
+            processArray[i].decBurstTime = processArray[i].burstTime
+            processArray[i].startTime = []
+            processArray[i].endTime = []
+            processArray[i].waitingTime = 0
+            processArray[i].turnAroundTime = 0
+        # reset the position
+        processArray.sort(key=lambda x: x.name)
+
     def nonPreSJF(self):
-        print("Non Premptive SJF")
+        processArray.sort(key=lambda x: (x.arrivalTime, x.burstTime))
+
+        time = 0
+        copyProcessList = processArray.copy()
+        processQueue = []
+        process = Process(0, 0, copyProcessList[0].arrivalTime, math.inf)
+        while True:
+            restart = True
+            while restart:
+                if len(copyProcessList) == 0:
+                    restart = False
+                else:
+                    restart = True
+
+                for i in range(len(copyProcessList)):
+                    if copyProcessList[i].arrivalTime == time:
+                        processQueue.append(copyProcessList.pop(i))
+                        break
+                    else:
+                        restart = False
+            processQueue.sort(key=lambda x: x.decBurstTime)
+            if process.name == "P0":
+                if len(processQueue) > 0:
+                    process = processQueue[0]
+                    process.startTime.append(time)
+                else:
+                    processQueue.append(process)
+            elif len(processQueue) > 1 and "P100" in process.name:
+                for e in processQueue:
+                    if "P100" in e.name:
+                        # add print gantt chart here ("IDLE", time)
+                        self.gantChartOut("IDLE", time)
+                        processQueue.remove(e)
+                        process = processQueue[0]
+                        process.startTime.append(time)
+            time = time + 1
+            process.decBurstTime = process.decBurstTime - 1
+            if process.decBurstTime <= 0:
+                process.endTime.append(time)
+                if process.name == "P0":
+                    # put print gantchart here ("IDLE", time)
+                    self.gantChartOut("IDLE", time)
+                else:
+                    self.gantChartOut(process.name, time)
+                processQueue.pop(processQueue.index(process))
+                if len(processQueue) == 0:
+                    if len(copyProcessList) == 0:
+                        break
+                    elif copyProcessList[0].arrivalTime == time:
+                        continue
+                    else:
+                        processQueue.append(Process(100, time, math.inf, math.inf))
+                        process = processQueue[0]
+                        process.startTime.append(time)
+                else:
+                    process = processQueue[0]
+                    process.startTime.append(time)
+
+        for i in range(len(processArray)):
+            for st in range(len(processArray[i].startTime)):
+                if st == 0:
+                    processArray[i].waitingTime = processArray[i].startTime[st] - processArray[i].arrivalTime
+                else:
+                    processArray[i].waitingTime = processArray[i].waitingTime + (
+                            processArray[i].startTime[st] - processArray[i].endTime[st - 1])
+            processArray[i].turnAroundTime = processArray[i].waitingTime + processArray[i].burstTime
+
+        for i in range(len(processArray)):
+            self.insertCalcTreeView(processArray[i].name, processArray[i].waitingTime,
+                                    processArray[i].turnAroundTime)
+
+        sumWT = 0
+        sumTT = 0
+        for i in range(len(processArray)):
+            sumWT = sumWT + processArray[i].waitingTime
+            sumTT = sumTT + processArray[i].turnAroundTime
+        averageWT = sumWT / len(processArray)
+        averageTT = sumTT / len(processArray)
+        print("Average WT:  %.2f" % averageWT)
+        print("Average TT:  %.2f" % averageTT)
+        self.calcEndResult(str(averageTT), str(averageWT))
+
+        # debug
+        for i in range(len(processArray)):
+            print("\n" + processArray[i].name)
+            print(processArray[i].startTime)
+            print(processArray[i].endTime)
+
+        # reset all the values
+        for i in range(len(processArray)):
+            processArray[i].decBurstTime = processArray[i].burstTime
+            processArray[i].startTime = []
+            processArray[i].endTime = []
+            processArray[i].waitingTime = 0
+            processArray[i].turnAroundTime = 0
+        # reset the position
+        processArray.sort(key=lambda x: x.name)
 
     def prePrio(self):
-        print("Premptive Priority")
+        processArray.sort(key=lambda x: (x.arrivalTime, x.burstTime))
+
+        time = 0
+        copyProcessList = processArray.copy()
+        processQueue = []
+        process = Process(0, 0, copyProcessList[0].arrivalTime, math.inf)
+        while True:
+            restart = True
+            while restart:
+                if len(copyProcessList) == 0:
+                    restart = False
+                else:
+                    restart = True
+
+                for i in range(len(copyProcessList)):
+                    if copyProcessList[i].arrivalTime == time:
+                        processQueue.append(copyProcessList.pop(i))
+                        break
+                    else:
+                        restart = False
+            processQueue.sort(key=lambda x: (x.priority, x.decBurstTime))
+
+            if len(processQueue) > 0 and process.name != processQueue[0].name:
+                process.endTime.append(time)
+                if (process.name != "P0" and process.name != "P100") and process.decBurstTime > 1:
+                    self.gantChartOut(process.name, time)
+                for e in processQueue:  #
+                    if "P100" in e.name:  #
+                        # add print gantt chart here
+                        self.gantChartOut("IDLE", time)
+                        processQueue.pop(processQueue.index(e))  #
+                process = processQueue[0]
+                process.startTime.append(time)
+            elif len(processQueue) == 0 and process.name == "P0":
+                processQueue.append(process)
+            time = time + 1
+            process.decBurstTime = process.decBurstTime - 1
+            if process.decBurstTime == 0:
+                process.endTime.append(time)
+                if process.name == "P0":
+                    self.gantChartOut("IDLE", time)
+                else:
+                    # put gant chart (process.name, time)
+                    self.gantChartOut(process.name, time)
+                processQueue.pop(0)
+            if len(processQueue) == 0:
+                if len(copyProcessList) == 0:
+                    break
+                elif copyProcessList[0].arrivalTime == time:
+                    continue
+                else:
+                    processQueue.append(Process(100, time, math.inf, math.inf))  #
+                    process = processQueue[0]  #
+
+        for i in range(len(processArray)):
+            for st in range(len(processArray[i].startTime)):
+                if st == 0:
+                    processArray[i].waitingTime = processArray[i].startTime[st] - processArray[i].arrivalTime
+                else:
+                    processArray[i].waitingTime = processArray[i].waitingTime + (
+                            processArray[i].startTime[st] - processArray[i].endTime[st - 1])
+            processArray[i].turnAroundTime = processArray[i].waitingTime + processArray[i].burstTime
+
+        for i in range(len(processArray)):
+            self.insertCalcTreeView(processArray[i].name, processArray[i].waitingTime,
+                                    processArray[i].turnAroundTime)
+
+        sumWT = 0
+        sumTT = 0
+        for i in range(len(processArray)):
+            sumWT = sumWT + processArray[i].waitingTime
+            sumTT = sumTT + processArray[i].turnAroundTime
+        averageWT = sumWT / len(processArray)
+        averageTT = sumTT / len(processArray)
+        print("Average WT:  %.2f" % averageWT)
+        print("Average TT:  %.2f" % averageTT)
+        self.calcEndResult(str(averageTT), str(averageWT))
+
+        # debug
+        for i in range(len(processArray)):
+            print("\n" + processArray[i].name)
+            print(processArray[i].startTime)
+            print(processArray[i].endTime)
+
+        # reset all the values
+        for i in range(len(processArray)):
+            processArray[i].decBurstTime = processArray[i].burstTime
+            processArray[i].startTime = []
+            processArray[i].endTime = []
+            processArray[i].waitingTime = 0
+            processArray[i].turnAroundTime = 0
+        # reset the position
+        processArray.sort(key=lambda x: x.name)
+
+    def nonPrePrio(self):
+
+        processArray.sort(key=lambda x: (x.arrivalTime, x.burstTime))
+
+        time = 0
+        copyProcessList = processArray.copy()
+        processQueue = []
+        process = Process(0, 0, copyProcessList[0].arrivalTime, math.inf)
+        while True:
+            restart = True
+            while restart:
+                if len(copyProcessList) == 0:
+                    restart = False
+                else:
+                    restart = True
+
+                for i in range(len(copyProcessList)):
+                    if copyProcessList[i].arrivalTime == time:
+                        processQueue.append(copyProcessList.pop(i))
+                        break
+                    else:
+                        restart = False
+            processQueue.sort(key=lambda x: (x.priority, x.decBurstTime))
+            if process.name == "P0":
+                if len(processQueue) > 0:
+                    process = processQueue[0]
+                    process.startTime.append(time)
+                else:
+                    processQueue.append(process)
+            elif len(processQueue) > 1 and "P100" in process.name:
+                for e in processQueue:
+                    if "P100" in e.name:
+                        # add print gantt chart here
+                        self.gantChartOut("IDLE", time)
+                        processQueue.remove(e)
+                        process = processQueue[0]
+                        process.startTime.append(time)
+            time = time + 1
+            process.decBurstTime = process.decBurstTime - 1
+            if process.decBurstTime <= 0:
+                process.endTime.append(time)
+                if process.name == "P0":
+                    # put print gantchart here ("IDLE", time)
+                    self.gantChartOut("IDLE", time)
+                else:
+                    self.gantChartOut(process.name, time)
+                processQueue.pop(processQueue.index(process))
+                if len(processQueue) == 0:
+                    if len(copyProcessList) == 0:
+                        break
+                    elif copyProcessList[0].arrivalTime == time:
+                        continue
+                    else:
+                        processQueue.append(Process(100, time, math.inf, math.inf))
+                        process = processQueue[0]
+                else:
+                    process = processQueue[0]
+                    process.startTime.append(time)
+
+        for i in range(len(processArray)):
+            for st in range(len(processArray[i].startTime)):
+                if st == 0:
+                    processArray[i].waitingTime = processArray[i].startTime[st] - processArray[i].arrivalTime
+                else:
+                    processArray[i].waitingTime = processArray[i].waitingTime + (
+                            processArray[i].startTime[st] - processArray[i].endTime[st - 1])
+            processArray[i].turnAroundTime = processArray[i].waitingTime + processArray[i].burstTime
+
+        for i in range(len(processArray)):
+            self.insertCalcTreeView(processArray[i].name, processArray[i].waitingTime,
+                                    processArray[i].turnAroundTime)
+
+        sumWT = 0
+        sumTT = 0
+        for i in range(len(processArray)):
+            sumWT = sumWT + processArray[i].waitingTime
+            sumTT = sumTT + processArray[i].turnAroundTime
+        averageWT = sumWT / len(processArray)
+        averageTT = sumTT / len(processArray)
+        print("Average WT:  %.2f" % averageWT)
+        print("Average TT:  %.2f" % averageTT)
+        self.calcEndResult(str(averageTT), str(averageWT))
+
+        # debug
+        for i in range(len(processArray)):
+            print("\n" + processArray[i].name)
+            print(processArray[i].startTime)
+            print(processArray[i].endTime)
+
+        # reset all the values
+        for i in range(len(processArray)):
+            processArray[i].decBurstTime = processArray[i].burstTime
+            processArray[i].startTime = []
+            processArray[i].endTime = []
+            processArray[i].waitingTime = 0
+            processArray[i].turnAroundTime = 0
+        # reset the position
+        processArray.sort(key=lambda x: x.name)
 
     def RR(self):
-        print(Process.getQuantumTime())
-        print("RR")
+        quantum = DialogPrompt().quantum
+        print(quantum)
+        processArray.sort(key=lambda x: x.arrivalTime)
+
+        time = 0
+        currentQuantum = 0
+        copyProcessList = processArray.copy()
+        processQueue = []
+        process = Process(0, 0, copyProcessList[0].arrivalTime, math.inf)  # need 4 args
+        moveProcess = None
+        while True:
+            restart = True
+            while restart:
+                if len(copyProcessList) == 0:
+                    restart = False
+                else:
+                    restart = True
+
+                for i in range(len(copyProcessList)):
+                    if copyProcessList[i].arrivalTime == time:
+                        processQueue.append(copyProcessList.pop(i))
+                        break
+                    else:
+                        restart = False
+            if moveProcess is not None:
+                processQueue.append(moveProcess)
+                moveProcess = None
+            if process.name == "P0":
+                if len(processQueue) > 0:
+                    process = processQueue[0]
+                    process.startTime.append(time)
+                else:
+                    processQueue.append(process)
+                    currentQuantum = math.inf
+            elif len(processQueue) > 1 and "P100" in process.name:
+                for e in processQueue:
+                    if "P100" in e.name:
+                        # add print gantt chart here
+                        self.gantChartOut("IDLE", time)
+                        processQueue.remove(e)
+                        process = processQueue[0]
+                        process.startTime.append(time)
+            time = time + 1
+            currentQuantum = currentQuantum + 1
+            process.decBurstTime = process.decBurstTime - 1
+            print("Check", process.name, currentQuantum, quantum, time, process.decBurstTime)
+            if process.decBurstTime == 0:
+                process.endTime.append(time)
+                if process.name == "P0":
+                    # put print gantchart here ("IDLE", time)
+                    self.gantChartOut("IDLE", time)
+                else:
+                    self.gantChartOut(process.name, time)
+                processQueue.remove(process)
+                if len(processQueue) == 0:
+                    if len(copyProcessList) == 0:
+                        break
+                    elif copyProcessList[0].arrivalTime == time:
+                        continue
+                    else:
+                        processQueue.append(Process(100, time, math.inf, math.inf))
+                        process = processQueue[0]
+                        currentQuantum = math.inf
+                else:
+                    process = processQueue[0]
+                    process.startTime.append(time)
+                    currentQuantum = 0
+            elif currentQuantum == quantum:
+                print("Enter", process.name, time)
+                process.endTime.append(time)
+                # add print gantt chart here
+                self.gantChartOut(process.name, time)
+                moveProcess = processQueue.pop(0)
+                process = processQueue[0]
+                process.startTime.append(time)
+                currentQuantum = 0
+
+        for i in range(len(processArray)):
+            for st in range(len(processArray[i].startTime)):
+                if st == 0:
+                    processArray[i].waitingTime = processArray[i].startTime[st] - processArray[i].arrivalTime
+                else:
+                    processArray[i].waitingTime = processArray[i].waitingTime + (
+                            processArray[i].startTime[st] - processArray[i].endTime[st - 1])
+            processArray[i].turnAroundTime = processArray[i].waitingTime + processArray[i].burstTime
+
+        for i in range(len(processArray)):
+            self.insertCalcTreeView(processArray[i].name, processArray[i].waitingTime,
+                                    processArray[i].turnAroundTime)
+
+        sumWT = 0
+        sumTT = 0
+        for i in range(len(processArray)):
+            sumWT = sumWT + processArray[i].waitingTime
+            sumTT = sumTT + processArray[i].turnAroundTime
+        averageWT = sumWT / len(processArray)
+        averageTT = sumTT / len(processArray)
+        print("Average WT:  %.2f" % averageWT)
+        print("Average TT:  %.2f" % averageTT)
+        self.calcEndResult(str(averageTT), str(averageWT))
+
+        # debug
+        for i in range(len(processArray)):
+            print("\n" + processArray[i].name)
+            print(processArray[i].startTime)
+            print(processArray[i].endTime)
+        # reset all the values
+        for i in range(len(processArray)):
+            processArray[i].decBurstTime = processArray[i].burstTime
+            processArray[i].startTime = []
+            processArray[i].endTime = []
+            processArray[i].waitingTime = 0
+            processArray[i].turnAroundTime = 0
+        # reset the position
+        processArray.sort(key=lambda x: x.name)
 
 
 class DialogPrompt(Tk):
     def __init__(self):
         super(DialogPrompt, self).__init__()
+        self.quantum = 0
         self.geometry("500x200")
         self.title("Quantum time dialog")
         self.entry = Entry(self, bd=5)
@@ -335,10 +756,10 @@ class DialogPrompt(Tk):
         self.label.pack(fill=X)
         self.entry.pack(fill=X)
         self.button.pack(fill=X)
-        self.wait_window()
+        self.wait_window(self)
 
     def on_button(self):
-        Process.setQuantumTime(self.entry.get())
+        self.quantum = int(self.entry.get())
         self.destroy()
 
 
