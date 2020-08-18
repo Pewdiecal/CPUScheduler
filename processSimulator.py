@@ -453,12 +453,13 @@ class MainWindow(Tk):
                         break
                     else:
                         restart = False
-            processQueue.sort(key=lambda x: (x.priority, x.decBurstTime))
+            processQueue.sort(key=lambda x: x.priority)
 
             if len(processQueue) > 0 and process.name != processQueue[0].name:
                 process.endTime.append(time)
-                if (process.name != "P0" and process.name != "P100") and process.decBurstTime > 1:
+                if (process.name != "P0" and process.name != "P100") and process.decBurstTime >= 1:
                     self.gantChartOut(process.name, time)
+                    processQueue.append(processQueue.pop(processQueue.index(process)))
                 for e in processQueue:  #
                     if "P100" in e.name:  #
                         # add print gantt chart here
@@ -475,7 +476,6 @@ class MainWindow(Tk):
                 if process.name == "P0":
                     self.gantChartOut("IDLE", time)
                 else:
-                    # put gant chart (process.name, time)
                     self.gantChartOut(process.name, time)
                 processQueue.pop(0)
             if len(processQueue) == 0:
@@ -485,7 +485,8 @@ class MainWindow(Tk):
                     continue
                 else:
                     processQueue.append(Process(100, time, math.inf, math.inf))  #
-                    process = processQueue[0]  #
+                    process = processQueue[0]
+
 
         for i in range(len(processArray)):
             for st in range(len(processArray[i].startTime)):
@@ -549,7 +550,7 @@ class MainWindow(Tk):
                         break
                     else:
                         restart = False
-            processQueue.sort(key=lambda x: (x.priority, x.decBurstTime))
+            processQueue.sort(key=lambda x: (x.priority, x.arrivalTime))
             if process.name == "P0":
                 if len(processQueue) > 0:
                     process = processQueue[0]
@@ -651,13 +652,17 @@ class MainWindow(Tk):
                         break
                     else:
                         restart = False
+            for i in range(len(processQueue)):
+                print(processQueue[i].name)
             if moveProcess is not None:
                 processQueue.append(moveProcess)
+                process = processQueue[0]
                 moveProcess = None
             if process.name == "P0":
                 if len(processQueue) > 0:
                     process = processQueue[0]
                     process.startTime.append(time)
+                    currentQuantum = 0
                 else:
                     processQueue.append(process)
                     currentQuantum = math.inf
@@ -669,11 +674,11 @@ class MainWindow(Tk):
                         processQueue.remove(e)
                         process = processQueue[0]
                         process.startTime.append(time)
+                        currentQuantum = 0
             time = time + 1
             currentQuantum = currentQuantum + 1
             process.decBurstTime = process.decBurstTime - 1
-            print("Check", process.name, currentQuantum, quantum, time, process.decBurstTime)
-            if process.decBurstTime == 0:
+            if process.decBurstTime <= 0:
                 process.endTime.append(time)
                 if process.name == "P0":
                     # put print gantchart here ("IDLE", time)
@@ -695,13 +700,13 @@ class MainWindow(Tk):
                     process.startTime.append(time)
                     currentQuantum = 0
             elif currentQuantum == quantum:
-                print("Enter", process.name, time)
                 process.endTime.append(time)
                 # add print gantt chart here
                 self.gantChartOut(process.name, time)
                 moveProcess = processQueue.pop(0)
-                process = processQueue[0]
-                process.startTime.append(time)
+                if len(processQueue) != 0:
+                    process = processQueue[0]
+                    process.startTime.append(time)
                 currentQuantum = 0
 
         for i in range(len(processArray)):
